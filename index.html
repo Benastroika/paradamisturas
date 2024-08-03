@@ -10,17 +10,31 @@
     <div class="container">
         <h1 id="page-title">Gerenciamento de Manutenção</h1>
 
-        <div class="import-section">
-            <input type="file" id="csvFileInput" accept=".csv">
-            <button id="load-button">Importar CSV</button>
-            <button id="delete-button">Apagar Planilha</button>
+        <div class="top-section">
+            <div class="import-section">
+                <input type="file" id="csvFileInput" accept=".csv">
+                <button id="load-button">Importar CSV</button>
+                <button id="delete-button">Apagar Planilha</button>
+            </div>
+
+            <div class="search-section">
+                <input type="text" id="search" placeholder="Pesquisar...">
+            </div>
         </div>
 
-        <form id="update-form">
-            <label for="Ordem">Ordem:</label>
-            <input type="text" id="Ordem" required>
-            <button type="submit">Atualizar Status</button>
-        </form>
+        <div class="status-section">
+            <form id="update-form">
+                <label for="Ordem">Ordem:</label>
+                <input type="text" id="Ordem" required>
+                <button type="submit">Atualizar Status</button>
+            </form>
+
+            <form id="uncomplete-form">
+                <label for="UncompleteOrdem">Ordem:</label>
+                <input type="text" id="UncompleteOrdem" required>
+                <button type="submit">Retirar Conclusão</button>
+            </form>
+        </div>
 
         <div id="chart-container">
             <button id="generate-chart-button">Gerar Gráfico</button>

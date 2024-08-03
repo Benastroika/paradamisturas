@@ -1,6 +1,7 @@
 let chartInstance = null;
 let activities = [];
 
+// Função para carregar o CSV e atualizar a tabela
 function loadCSV() {
     const fileInput = document.getElementById('csvFileInput');
     const file = fileInput.files[0];
@@ -20,6 +21,7 @@ function loadCSV() {
     });
 }
 
+// Função para preencher a tabela com os dados
 function populateTable(data) {
     const tableBody = document.getElementById('table-body');
     tableBody.innerHTML = '';
@@ -43,16 +45,26 @@ function populateTable(data) {
     });
 }
 
+// Adiciona o evento de clique para o botão de importação
 document.getElementById('load-button').addEventListener('click', function() {
     loadCSV();
 });
 
+// Adiciona o evento de submit para atualizar o status
 document.getElementById('update-form').addEventListener('submit', function(event) {
     event.preventDefault();
     const ordem = document.getElementById('Ordem').value;
     updateStatus(ordem);
 });
 
+// Adiciona o evento de submit para retirar a conclusão
+document.getElementById('uncomplete-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const ordem = document.getElementById('UncompleteOrdem').value;
+    uncompleteStatus(ordem);
+});
+
+// Atualiza o status de uma ordem
 function updateStatus(ordem) {
     activities.forEach(activity => {
         if (activity.Ordem === ordem) {
@@ -62,10 +74,22 @@ function updateStatus(ordem) {
     populateTable(activities);
 }
 
+// Remove a conclusão de uma ordem
+function uncompleteStatus(ordem) {
+    activities.forEach(activity => {
+        if (activity.Ordem === ordem) {
+            activity.Status = ''; // Retira o status de 'Concluído'
+        }
+    });
+    populateTable(activities);
+}
+
+// Adiciona o evento de clique para gerar o gráfico
 document.getElementById('generate-chart-button').addEventListener('click', function() {
     generateCurvaS();
 });
 
+// Gera o gráfico Curva S
 function generateCurvaS() {
     const totalActivities = activities.length;
     if (totalActivities === 0) {
@@ -73,7 +97,6 @@ function generateCurvaS() {
         return;
     }
 
-    // Dados para o gráfico
     const cumulativeData = activities.reduce((acc, activity) => {
         const date = new Date(activity['Data-base iníc.']);
         const status = (activity.Status === 'Concluído') ? 1 : 0;
@@ -104,11 +127,8 @@ function generateCurvaS() {
 
     // Adicionando pontos de mudança na linha base
     const changePoints = cumulativeData.map((item, index) => {
-        if (index === 0 || index === cumulativeData.length - 1 || (index % Math.floor(cumulativeData.length / 3)) === 0) {
-            return {
-                x: index,
-                y: (index / (cumulativeData.length - 1)) * 100
-            };
+        if (index === 0 || index === cumulativeData.length - 1 || (index % Math.floor(cumulativeData.length / 5)) === 0) {
+            return { x: index, y: item.value };
         }
         return null;
     }).filter(point => point !== null);
@@ -194,6 +214,7 @@ function generateCurvaS() {
     document.getElementById('percentage-info').textContent = `Percentual de Atividades Executadas: ${percentageExecuted}% | Percentual Esperado: ${percentageExpected}%`;
 }
 
+// Adiciona o evento de clique para apagar a planilha
 document.getElementById('delete-button').addEventListener('click', function() {
     activities = [];
     populateTable(activities);
@@ -204,10 +225,12 @@ document.getElementById('delete-button').addEventListener('click', function() {
     alert("Planilha apagada com sucesso.");
 });
 
+// Adiciona o evento de clique para salvar o CSV
 document.getElementById('save-button').addEventListener('click', function() {
     saveCSV();
 });
 
+// Salva os dados em um arquivo CSV
 function saveCSV() {
     const csvData = Papa.unparse(activities, {
         header: true
@@ -219,3 +242,14 @@ function saveCSV() {
     link.setAttribute('download', 'PARADA.csv');
     link.click();
 }
+
+// Adiciona o evento de input para pesquisa
+document.getElementById('search').addEventListener('input', function(event) {
+    const searchTerm = event.target.value.toLowerCase();
+    const filteredActivities = activities.filter(activity => {
+        return Object.values(activity).some(value =>
+            String(value).toLowerCase().includes(searchTerm)
+        );
+    });
+    populateTable(filteredActivities);
+});
