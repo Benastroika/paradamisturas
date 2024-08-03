@@ -5,69 +5,77 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciamento de Manutenção</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1 id="page-title">Gerenciamento de Manutenção</h1>
+        <h1>Gerenciamento de Manutenção</h1>
 
         <div class="top-section">
             <div class="import-section">
                 <input type="file" id="csvFileInput" accept=".csv">
-                <button id="load-button">Importar CSV</button>
-                <button id="delete-button">Apagar Planilha</button>
+                <button id="load-button" class="button button-primary">Importar CSV</button>
+                <button id="delete-button" class="button button-secondary">Apagar Planilha</button>
             </div>
-
             <div class="search-section">
-                <input type="text" id="search" placeholder="Pesquisar...">
+                <input type="text" id="search-input" placeholder="Pesquisar...">
             </div>
         </div>
 
         <div class="status-section">
             <form id="update-form">
-                <label for="Ordem">Ordem:</label>
-                <input type="text" id="Ordem" required>
-                <button type="submit">Atualizar Status</button>
+                <input type="text" id="Ordem" placeholder="Ordem para atualizar" required>
+                <button type="submit" class="button button-primary">Atualizar Status</button>
             </form>
-
             <form id="uncomplete-form">
-                <label for="UncompleteOrdem">Ordem:</label>
-                <input type="text" id="UncompleteOrdem" required>
-                <button type="submit">Retirar Conclusão</button>
+                <input type="text" id="UncompleteOrdem" placeholder="Ordem para retirar conclusão" required>
+                <button type="submit" class="button button-secondary">Retirar Conclusão</button>
             </form>
         </div>
 
-        <div id="chart-container">
-            <button id="generate-chart-button">Gerar Gráfico</button>
-            <button id="save-button">Salvar CSV</button>
+        <div class="chart-container" id="chart-container">
+            <button id="generate-chart-button" class="button button-primary">Gerar Gráfico</button>
+            <button id="minimize-chart-button" class="button button-secondary">Minimizar Gráfico</button>
             <canvas id="curva-s-chart"></canvas>
-            <div id="percentage-info"></div>
         </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Ordem</th>
-                    <th>Tipo de ordem</th>
-                    <th>Código ABC</th>
-                    <th>Data-base iníc.</th>
-                    <th>Loc.instalação</th>
-                    <th>Denominação</th>
-                    <th>Texto breve</th>
-                    <th>Duração normal</th>
-                    <th>Número</th>
-                    <th>TOTAL HH</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="table-body">
-                <!-- As linhas da tabela serão inseridas aqui -->
-            </tbody>
-        </table>
-    </div>
+        <div class="table-container">
+            <table id="data-table" class="table">
+                <thead>
+                    <tr>
+                        <th>Ordem</th>
+                        <th>Tipo de ordem</th>
+                        <th>Código ABC</th>
+                        <th>Data-base iníc.</th>
+                        <th>Loc.instalação</th>
+                        <th>Denominação</th>
+                        <th>Texto breve</th>
+                        <th>Duração normal</th>
+                        <th>Número</th>
+                        <th>TOTAL HH</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.0.0/dist/chartjs-plugin-annotation.min.js"></script>
-    <script src="script.js"></script>
+        <div class="cards-section">
+            <div class="card">
+                <div class="card-header">Informações</div>
+                <div class="card-body" id="totals-info"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">Curva S</div>
+                <div class="card-body" id="percentage-info"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">Gráfico de Rosca</div>
+                <canvas id="percentage-doughnut-chart"></canvas>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>    
 </body>
 </html>

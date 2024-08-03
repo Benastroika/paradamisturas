@@ -1,5 +1,6 @@
 let chartInstance = null;
 let activities = [];
+let doughnutChart = null;
 
 // Função para carregar o CSV e atualizar a tabela
 function loadCSV() {
@@ -17,6 +18,7 @@ function loadCSV() {
         complete: function(results) {
             activities = results.data;
             populateTable(activities);
+            updateCards();
         }
     });
 }
@@ -28,8 +30,8 @@ function populateTable(data) {
 
     data.forEach(row => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${row.Ordem || ''}</td>
+        tr.innerHTML = 
+            `<td>${row.Ordem || ''}</td>
             <td>${row['Tipo de ordem'] || ''}</td>
             <td>${row['Código ABC'] || ''}</td>
             <td>${row['Data-base iníc.'] || ''}</td>
@@ -39,8 +41,7 @@ function populateTable(data) {
             <td>${row['Duração normal'] || ''}</td>
             <td>${row['Número'] || ''}</td>
             <td>${row['TOTAL HH'] || ''}</td>
-            <td>${row['Status'] || ''}</td>
-        `;
+            <td>${row['Status'] || ''}</td>`;
         tableBody.appendChild(tr);
     });
 }
@@ -48,6 +49,13 @@ function populateTable(data) {
 // Adiciona o evento de clique para o botão de importação
 document.getElementById('load-button').addEventListener('click', function() {
     loadCSV();
+});
+
+// Adiciona o evento de clique para apagar a planilha
+document.getElementById('delete-button').addEventListener('click', function() {
+    activities = [];
+    populateTable(activities);
+    document.getElementById('csvFileInput').value = ''; // Limpar o input de arquivo
 });
 
 // Adiciona o evento de submit para atualizar o status
@@ -72,6 +80,7 @@ function updateStatus(ordem) {
         }
     });
     populateTable(activities);
+    generateChart(); // Atualiza a curva S após atualizar o status
 }
 
 // Remove a conclusão de uma ordem
@@ -82,174 +91,156 @@ function uncompleteStatus(ordem) {
         }
     });
     populateTable(activities);
+    generateChart(); // Atualiza a curva S após retirar a conclusão
 }
 
 // Adiciona o evento de clique para gerar o gráfico
 document.getElementById('generate-chart-button').addEventListener('click', function() {
-    generateCurvaS();
+    generateChart();
+});
+
+// Adiciona o evento de clique para minimizar o gráfico
+document.getElementById('minimize-chart-button').addEventListener('click', function() {
+    const chartContainer = document.getElementById('chart-container');
+    chartContainer.classList.toggle('minimized');
 });
 
 // Gera o gráfico Curva S
-function generateCurvaS() {
+function generateChart() {
     const totalActivities = activities.length;
     if (totalActivities === 0) {
-        alert("Não há atividades para gerar o gráfico.");
+        alert("Por favor, carregue um arquivo CSV primeiro.");
         return;
     }
 
-    const cumulativeData = activities.reduce((acc, activity) => {
-        const date = new Date(activity['Data-base iníc.']);
-        const status = (activity.Status === 'Concluído') ? 1 : 0;
-        const last = acc.length ? acc[acc.length - 1].value : 0;
-        acc.push({ date, value: last + status });
-        return acc;
-    }, []);
+    const completedActivities = activities.filter(activity => activity.Status === 'Concluído').length;
 
-    cumulativeData.sort((a, b) => a.date - b.date);
+    const labels = activities.map(activity => activity['Data-base iníc.']);
+    const completedData = [];
+    const plannedData = [];
+    let cumulativeCompleted = 0;
+    let cumulativePlanned = 0;
 
-    const labels = cumulativeData.map(item => {
-        const date = item.date;
-        return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+    const totalHHPlanned = activities.reduce((sum, activity) => sum + (parseFloat(activity['TOTAL HH']) || 0), 0);
+
+    activities.forEach((activity) => {
+        cumulativePlanned += parseFloat(activity['TOTAL HH']) || 0;
+        plannedData.push((cumulativePlanned / totalHHPlanned) * 100);
+        
+        if (activity.Status === 'Concluído') {
+            cumulativeCompleted += parseFloat(activity['TOTAL HH']) || 0;
+        }
+        completedData.push((cumulativeCompleted / totalHHPlanned) * 100);
     });
 
-    const data = cumulativeData.map(item => (item.value / totalActivities) * 100);
-
-    // Gerando a linha base proporcional
-    const baselineData = [];
-    const numPoints = labels.length;
-    const step = 100 / (numPoints - 1);
-    let expectedPercentage = 0;
-
-    for (let i = 0; i < numPoints; i++) {
-        expectedPercentage = step * i;
-        baselineData.push(expectedPercentage);
-    }
-
-    // Adicionando pontos de mudança na linha base
-    const changePoints = cumulativeData.map((item, index) => {
-        if (index === 0 || index === cumulativeData.length - 1 || (index % Math.floor(cumulativeData.length / 5)) === 0) {
-            return { x: index, y: item.value };
-        }
-        return null;
-    }).filter(point => point !== null);
-
-    const chartData = {
-        labels: labels,
-        datasets: [
-            {
-                label: 'Curva S',
-                data: data,
-                borderColor: '#007bff',
-                backgroundColor: 'rgba(0, 123, 255, 0.2)',
-                fill: true
-            },
-            {
-                label: 'Linha Base Esperada',
-                data: baselineData,
-                borderColor: '#ff5733',
-                backgroundColor: 'rgba(255, 87, 51, 0.2)',
-                borderDash: [10, 5], // Linha pontilhada
-                fill: false
-            }
-        ]
-    };
-
     const ctx = document.getElementById('curva-s-chart').getContext('2d');
-
-    // Destroy existing chart if it exists
     if (chartInstance) {
         chartInstance.destroy();
     }
 
     chartInstance = new Chart(ctx, {
         type: 'line',
-        data: chartData,
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Concluído',
+                    data: completedData,
+                    fill: false,
+                    borderColor: '#007bff', // azul para concluído
+                    tension: 0.1,
+                    borderWidth: 2
+                },
+                {
+                    label: 'Planejado',
+                    data: plannedData,
+                    fill: false,
+                    borderColor: '#ff5733', // vermelho para planejado
+                    tension: 0.1,
+                    borderWidth: 2
+                }
+            ]
+        },
         options: {
             scales: {
-                x: {
-                    type: 'category',
-                    labels: labels,
-                    title: {
-                        display: true,
-                        text: 'Data'
-                    }
-                },
                 y: {
+                    beginAtZero: true,
+                    max: 100,
                     ticks: {
-                        callback: function(value) {
-                            return value + '%';
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: 'Percentual'
+                        callback: function(value) { return value + '%' }
                     }
-                }
-            },
-            plugins: {
-                annotation: {
-                    annotations: changePoints.map(point => ({
-                        type: 'line',
-                        xMin: point.x,
-                        xMax: point.x,
-                        borderColor: 'rgba(255, 87, 51, 0.5)', // Cor mais clara
-                        borderWidth: 1, // Largura da linha
-                        borderDash: [5, 5], // Pontilhado
-                        label: {
-                            content: labels[point.x],
-                            enabled: true,
-                            position: 'top'
-                        }
-                    }))
                 }
             }
         }
     });
 
-    // Atualizar informações de porcentagem
-    const executedActivities = activities.filter(activity => activity.Status === 'Concluído').length;
-    const percentageExecuted = ((executedActivities / totalActivities) * 100).toFixed(2);
-    const percentageExpected = (100).toFixed(2); // Porcentagem esperada é sempre 100%
-
-    document.getElementById('percentage-info').textContent = `Percentual de Atividades Executadas: ${percentageExecuted}% | Percentual Esperado: ${percentageExpected}%`;
+    updateCards();
 }
 
-// Adiciona o evento de clique para apagar a planilha
-document.getElementById('delete-button').addEventListener('click', function() {
-    activities = [];
-    populateTable(activities);
-    if (chartInstance) {
-        chartInstance.destroy();
+// Atualiza os cartões com totais e percentuais
+function updateCards() {
+    const totalActivities = activities.length;
+    const completedActivities = activities.filter(activity => activity.Status === 'Concluído').length;
+
+    const totalHHPlanned = activities.reduce((sum, activity) => sum + (parseFloat(activity['TOTAL HH']) || 0), 0);
+    const totalHHCompleted = activities
+        .filter(activity => activity.Status === 'Concluído')
+        .reduce((sum, activity) => sum + (parseFloat(activity['TOTAL HH']) || 0), 0);
+
+    document.getElementById('totals-info').innerHTML = 
+        `<div>Total de Ordens: ${totalActivities}</div>
+         <div>Ordens Concluídas: ${completedActivities}</div>
+         <div>Total HH Planejado: ${totalHHPlanned.toFixed(2)}</div>
+         <div>Total HH Concluído: ${totalHHCompleted.toFixed(2)}</div>`;
+
+    const percentageCompleted = (completedActivities / totalActivities) * 100 || 0;
+    document.getElementById('percentage-info').innerHTML = 
+        `Percentual Concluído: ${percentageCompleted.toFixed(2)}%`;
+
+    if (doughnutChart) {
+        doughnutChart.destroy();
     }
-    document.getElementById('percentage-info').textContent = '';
-    alert("Planilha apagada com sucesso.");
-});
 
-// Adiciona o evento de clique para salvar o CSV
-document.getElementById('save-button').addEventListener('click', function() {
-    saveCSV();
-});
-
-// Salva os dados em um arquivo CSV
-function saveCSV() {
-    const csvData = Papa.unparse(activities, {
-        header: true
+    const ctxDoughnut = document.getElementById('percentage-doughnut-chart').getContext('2d');
+    doughnutChart = new Chart(ctxDoughnut, {
+        type: 'doughnut',
+        data: {
+            labels: ['Concluído', 'Planejado'],
+            datasets: [{
+                data: [completedActivities, totalActivities - completedActivities],
+                backgroundColor: ['#007bff', '#e9ecef']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (context.parsed !== null) {
+                                label += `: ${context.parsed} (${context.formattedValue})`;
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
     });
-
-    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'PARADA.csv');
-    link.click();
 }
 
-// Adiciona o evento de input para pesquisa
-document.getElementById('search').addEventListener('input', function(event) {
+// Função de pesquisa na tabela
+document.getElementById('search-input').addEventListener('input', function(event) {
     const searchTerm = event.target.value.toLowerCase();
-    const filteredActivities = activities.filter(activity => {
-        return Object.values(activity).some(value =>
-            String(value).toLowerCase().includes(searchTerm)
-        );
+    const rows = document.querySelectorAll('#table-body tr');
+
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        const found = Array.from(cells).some(cell => cell.textContent.toLowerCase().includes(searchTerm));
+        row.style.display = found ? '' : 'none';
     });
-    populateTable(filteredActivities);
 });
