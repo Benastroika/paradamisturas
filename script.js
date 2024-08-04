@@ -99,10 +99,9 @@ document.getElementById('generate-chart-button').addEventListener('click', funct
     generateChart();
 });
 
-// Adiciona o evento de clique para minimizar o gráfico
-document.getElementById('minimize-chart-button').addEventListener('click', function() {
-    const chartContainer = document.getElementById('chart-container');
-    chartContainer.classList.toggle('minimized');
+// Adiciona o evento de clique para salvar o CSV
+document.getElementById('save-csv-button').addEventListener('click', function() {
+    saveCSV();
 });
 
 // Gera o gráfico Curva S
@@ -231,6 +230,39 @@ function updateCards() {
             }
         }
     });
+}
+
+// Função para salvar o CSV
+function saveCSV() {
+    if (activities.length === 0) {
+        alert("Não há dados para salvar.");
+        return;
+    }
+
+    // Convertendo os dados em CSV
+    const csvRows = [];
+    const headers = Object.keys(activities[0]);
+    csvRows.push(headers.join(','));
+
+    for (const activity of activities) {
+        const values = headers.map(header => {
+            const escaped = ('' + activity[header]).replace(/"/g, '\\"');
+            return `"${escaped}"`;
+        });
+        csvRows.push(values.join(','));
+    }
+
+    // Criando o blob e o link para download
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'PARADA.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 // Função de pesquisa na tabela
